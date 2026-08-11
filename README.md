@@ -13,6 +13,8 @@
 
 ## 安装
 
+项目已发布至[GreasyFork](https://greasyfork.org/zh-CN/scripts/590827-cleanshare-分享链接净化-bilibili-youtube-小红书)，推荐通过此方式安装脚本
+
 1. 浏览器安装 [Tampermonkey](https://www.tampermonkey.net/) 或 Userscripts（Safari）
 2. 点击 Tampermonkey 图标 → 新建脚本
 3. 把 [share-cleaner.user.js](share-cleaner.user.js) 的内容粘贴进去，保存
