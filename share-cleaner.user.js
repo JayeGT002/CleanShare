@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CleanShare - 分享链接净化 (Bilibili & YouTube)
 // @namespace    https://github.com/JayeGT002/CleanShare
-// @version      2.3.0
+// @version      2.3.1
 // @description  替换Bilibili/YouTube的分享行为：复制"标题 净化后链接"，去除跟踪参数。支持油猴菜单打开设置面板。
 // @author       JayeGT002
 // @license      MIT
@@ -401,8 +401,8 @@
     svg.setAttribute('viewBox', '0 0 28 28');
     svg.setAttribute('class', 'video-toolbar-item-icon');
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    // 复制图标 path（实心风格，与分享图标一致）
-    path.setAttribute('d', 'M11 4h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-2v-2h2a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-9a1 1 0 0 0-1 1v2H8V7a3 3 0 0 1 3-3Zm-4 6h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-9a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H7Z');
+    // B 站官方"复制链接"图标（分享面板内），实心风格与点赞/投币/收藏一致
+    path.setAttribute('d', 'M12.6058 10.3326V5.44359C12.6058 4.64632 13.2718 4 14.0934 4C14.4423 4 14.78 4.11895 15.0476 4.33606L25.3847 12.7221C26.112 13.3121 26.2087 14.3626 25.6007 15.0684C25.5352 15.1443 25.463 15.2144 25.3847 15.2779L15.0476 23.6639C14.4173 24.1753 13.4791 24.094 12.9521 23.4823C12.7283 23.2226 12.6058 22.8949 12.6058 22.5564V18.053C7.59502 18.053 5.37116 19.9116 2.57197 23.5251C2.47607 23.6489 2.00031 23.7769 2.00031 23.2122C2.00031 16.2165 3.90102 10.3326 12.6058 10.3326Z');
     path.setAttribute('fill', 'currentColor');
     svg.appendChild(path);
     inner.appendChild(svg);
