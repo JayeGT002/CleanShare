@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CleanShare - 分享链接净化 (Bilibili & YouTube & 小红书)
 // @namespace    https://github.com/JayeGT002/CleanShare
-// @version      2.1.0
+// @version      2.2.1
 // @description  替换Bilibili/YouTube/小红书的分享行为：复制"标题 净化后链接"，去除跟踪参数与口令码。支持油猴菜单打开设置面板。
 // @author       JayeGT002
 // @license      MIT
@@ -12,9 +12,14 @@
 // @match        https://m.bilibili.com/video/*
 // @match        https://www.youtube.com/watch*
 // @match        https://m.youtube.com/watch*
-// @match        https://www.xiaohongshu.com/discovery/item/*
+// @match        https://www.xiaohongshu.com/*
 // @match        https://www.xiaohongshu.com/explore/*
-// @match        https://www.xiaohongshu.com/xhsweb/share/*
+// @match        https://www.xiaohongshu.com/discovery/item/*
+// @match        https://www.xiaohongshu.com/search_result/*
+// @match        https://www.xiaohongshu.com/user/profile/*
+// @match        https://www.xiaohongshu.com/board/*
+// @match        https://m.xiaohongshu.com/*
+// @include      *://*.xiaohongshu.com/*
 // @grant        GM_setClipboard
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -40,7 +45,8 @@
   const CONFIG_KEY = 'share_cleaner_config_v2';
   const DEFAULT_CONFIG = {
     ytMode: 'B', // A: 直接复制  B: 劫持面板复制按钮
-    xhsEnabled: true
+    xhsEnabled: true,
+    biliBvBtn: true
   };
 
   function getConfig() {
@@ -292,7 +298,19 @@
     biliTab.dataset.tab = 'bilibili';
     biliTab.style.display = 'none';
     biliTab.appendChild(el('div', { fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: '#1a1a1a' }, 'Bilibili'));
-    biliTab.appendChild(el('div', { fontSize: '14px', color: '#888', lineHeight: '1.6' }, '暂时没有要设置的捏'));
+    const biliLabel = el('label', { display: 'flex', alignItems: 'center', padding: '10px 0', cursor: 'pointer', fontSize: '14px', color: '#444' });
+    const biliCheckbox = el('input', { marginRight: '10px', accentColor: '#2563eb' });
+    biliCheckbox.type = 'checkbox';
+    biliCheckbox.id = 'sc-bili-bv';
+    biliCheckbox.checked = cfg.biliBvBtn;
+    biliLabel.appendChild(biliCheckbox);
+    biliLabel.appendChild(document.createTextNode(' 启用 BV 号复制按钮'));
+    biliTab.appendChild(biliLabel);
+    const biliHint = el('div', {
+      marginTop: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px',
+      fontSize: '12px', color: '#888', lineHeight: '1.6'
+    }, '在视频工具栏添加「BV号」按钮，点击一键复制纯 BV 号。');
+    biliTab.appendChild(biliHint);
     content.appendChild(biliTab);
 
     body.appendChild(content);
@@ -332,6 +350,14 @@
       c.xhsEnabled = xhsCheckbox.checked;
       saveConfig(c);
       showToast('已保存');
+    });
+    biliCheckbox.addEventListener('change', () => {
+      const c = getConfig();
+      c.biliBvBtn = biliCheckbox.checked;
+      saveConfig(c);
+      showToast('已保存');
+      // 立即生效：注入或移除按钮
+      injectBvButton();
     });
 
     // 关闭交互
@@ -435,13 +461,11 @@
 
   function setupXhsHook() {
     if (!isXHS) return;
-    const cfg = getConfig();
-    if (!cfg.xhsEnabled) return;
-
-    // Hook navigator.clipboard.writeText
-    // 小红书点击"复制链接"时调用此 API，原始文本带口令码和数字前缀
+    // 始终安装 hook，在 hook 内部实时读取配置，这样设置面板切换后立即生效
     if (_originalWriteText && navigator.clipboard) {
       navigator.clipboard.writeText = async function (text) {
+        const cfg = getConfig();
+        if (!cfg.xhsEnabled) return _originalWriteText(text);
         const cleaned = cleanXhsShareText(text);
         if (cleaned && cleaned !== text) {
           try {
@@ -465,49 +489,37 @@
     return m ? m[1] : '';
   }
 
-  // 创建 BV 号复制按钮（模仿 B 站原生工具栏项样式）
+  // 创建 BV 号复制按钮（复用 B 站原生工具栏 class，样式与点赞/分享一致）
   function createBvButton() {
     const wrap = document.createElement('div');
     wrap.className = 'toolbar-left-item-wrap sc-bv-btn';
-    Object.assign(wrap.style, { cursor: 'pointer', userSelect: 'none' });
+    wrap.setAttribute('title', '复制 BV 号');
 
     const inner = document.createElement('div');
+    // 复用原生 class，继承 color/fontSize/fontWeight/flex 等样式
     inner.className = 'video-toolbar-left-item';
     wrap.appendChild(inner);
 
-    const item = document.createElement('div');
-    Object.assign(item.style, {
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      width: '100%', height: '100%', color: '#505050', fontSize: '13px',
-      gap: '4px'
-    });
-    inner.appendChild(item);
-
-    // 复制图标（SVG，模仿 B 站线性图标风格）
+    // 图标：28×28 viewBox 0 0 28 28，与分享按钮图标尺寸一致，fill=currentColor
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('width', '18');
-    svg.setAttribute('height', '18');
-    svg.setAttribute('fill', 'none');
-    svg.setAttribute('stroke', 'currentColor');
-    svg.setAttribute('stroke-width', '2');
-    svg.setAttribute('stroke-linecap', 'round');
-    svg.setAttribute('stroke-linejoin', 'round');
-    const rect1 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect1.setAttribute('x', '9');
-    rect1.setAttribute('y', '9');
-    rect1.setAttribute('width', '11');
-    rect1.setAttribute('height', '11');
-    rect1.setAttribute('rx', '2');
-    svg.appendChild(rect1);
+    svg.setAttribute('width', '28');
+    svg.setAttribute('height', '28');
+    svg.setAttribute('viewBox', '0 0 28 28');
+    svg.setAttribute('class', 'video-toolbar-item-icon');
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1');
+    // 复制图标 path（实心风格，与分享图标一致）
+    path.setAttribute('d', 'M11 4h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-2v-2h2a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-9a1 1 0 0 0-1 1v2H8V7a3 3 0 0 1 3-3Zm-4 6h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-9a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H7Z');
+    path.setAttribute('fill', 'currentColor');
     svg.appendChild(path);
-    item.appendChild(svg);
+    inner.appendChild(svg);
 
-    const label = document.createElement('span');
-    label.textContent = 'BV号';
-    item.appendChild(label);
+    // 文字：复用原生文字 class
+    const txt = document.createElement('div');
+    txt.className = 'video-toolbar-item-text';
+    const span = document.createElement('span');
+    span.textContent = 'BV号';
+    txt.appendChild(span);
+    inner.appendChild(txt);
 
     // 点击复制 BV 号
     wrap.addEventListener('click', async (e) => {
@@ -532,27 +544,23 @@
     return wrap;
   }
 
-  // 注入按钮到 B 站工具栏（SPA 友好，防重复注入）
+  // 注入按钮到 B 站工具栏（SPA 友好，防重复注入；根据配置开关）
   function injectBvButton() {
     if (!isBili) return;
-    if (document.querySelector('.sc-bv-btn')) return; // 已注入
+    const cfg = getConfig();
+    const existing = document.querySelector('.sc-bv-btn');
+    if (!cfg.biliBvBtn) {
+      // 配置关闭：移除已注入的按钮
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) return; // 已注入
     const toolbar = document.querySelector(
       '#arc_toolbar_report .toolbar-left, .video-toolbar-container .toolbar-left, #arc_toolbar_report .video-toolbar-left-main, .video-toolbar-left-main'
     );
     if (!toolbar) return;
-    // 找到分享按钮，插到它后面；找不到则追加到末尾
-    const shareBtn = Array.from(toolbar.children).find((c) => {
-      const t = (c.textContent || '').trim();
-      return /分享/.test(t) && t.length <= 6;
-    });
     const btn = createBvButton();
-    if (shareBtn && shareBtn.nextSibling) {
-      toolbar.insertBefore(btn, shareBtn.nextSibling);
-    } else if (shareBtn) {
-      toolbar.appendChild(btn);
-    } else {
-      toolbar.appendChild(btn);
-    }
+    toolbar.appendChild(btn);
   }
 
   // 用 MutationObserver 监听工具栏出现（B 站 SPA 动态加载）
