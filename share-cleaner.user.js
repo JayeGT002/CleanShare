@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CleanShare - 分享链接净化 (Bilibili & YouTube)
 // @namespace    https://github.com/JayeGT002/CleanShare
-// @version      2.3.1
+// @version      2.3.2
 // @description  替换Bilibili/YouTube的分享行为：复制"标题 净化后链接"，去除跟踪参数。支持油猴菜单打开设置面板。
 // @author       JayeGT002
 // @license      MIT
@@ -411,7 +411,7 @@
     const txt = document.createElement('div');
     txt.className = 'video-toolbar-item-text';
     const span = document.createElement('span');
-    span.textContent = 'BV号';
+    span.textContent = '复制BV号';
     txt.appendChild(span);
     inner.appendChild(txt);
 
