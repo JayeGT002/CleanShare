@@ -1,6 +1,6 @@
 # CleanShare
 
-一个油猴脚本，净化 Bilibili / YouTube / 小红书的分享行为：点击分享按钮时复制「标题 + 净化链接」，去除跟踪参数与口令码。
+一个油猴脚本，净化 Bilibili / YouTube 的分享行为：点击分享按钮时复制「标题 + 净化链接」，去除跟踪参数。
 
 ## 功能
 
@@ -10,8 +10,13 @@
 - **YouTube**：两种模式可选
   - 方案A：点击分享按钮直接复制，原生面板不弹出
   - 方案B（默认）：保留原生分享面板，点击面板内"复制"时替换为净化链接，去除 `&si=`、`&feature=` 等参数
-- **小红书**：Hook 剪贴板 API，自动净化分享文本，去除数字前缀、`【... | 小红书 - 你的生活兴趣社区】`、口令码 `😆 xxx 😆`，只保留「标题 链接」。
 - **设置面板**：通过油猴菜单「⚙ 打开设置面板」打开，左侧导航 + 右侧子项布局。
+
+## 小红书支持状态
+
+> 人生有梦，各自精彩。由于小红书针对 Agent 反爬拦截过于严重，因此放弃适配。聚散终有时，感谢过去所有，未来仍是家人，有朋自远方来，又赴远方。
+
+小红书相关的分享净化功能已从脚本中移除，不再适配，请勿在 xiaohongshu.com 使用本脚本。
 
 ## 安装
 
@@ -29,10 +34,6 @@
 
 ```
 《夜店我要聽》陳小雲 x 謝金燕 - 愛情恰恰 x 含淚跳恰恰 重拍混音 (Johnny Jumper Mashup Mix) https://www.youtube.com/watch?v=3-BoiSZ0Ods
-```
-
-```
-主打一个干净耐看，没别的 - 生椰拿铁 https://www.xiaohongshu.com/discovery/item/6a541f990000000006030fc1?source=webshare&xhsshare=pc_web&xsec_token=ABXtIvR-F6ABq_Bh3xog7xn9uo9LVAJxB7WY7zQNClUwY=&xsec_source=pc_share
 ```
 
 ## 兼容性

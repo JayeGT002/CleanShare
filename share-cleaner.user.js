@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         CleanShare - 分享链接净化 (Bilibili & YouTube & 小红书)
+// @name         CleanShare - 分享链接净化 (Bilibili & YouTube)
 // @namespace    https://github.com/JayeGT002/CleanShare
-// @version      2.2.1
-// @description  替换Bilibili/YouTube/小红书的分享行为：复制"标题 净化后链接"，去除跟踪参数与口令码。支持油猴菜单打开设置面板。
+// @version      2.3.0
+// @description  替换Bilibili/YouTube的分享行为：复制"标题 净化后链接"，去除跟踪参数。支持油猴菜单打开设置面板。
 // @author       JayeGT002
 // @license      MIT
 // @match        https://www.bilibili.com/video/*
@@ -12,14 +12,6 @@
 // @match        https://m.bilibili.com/video/*
 // @match        https://www.youtube.com/watch*
 // @match        https://m.youtube.com/watch*
-// @match        https://www.xiaohongshu.com/*
-// @match        https://www.xiaohongshu.com/explore/*
-// @match        https://www.xiaohongshu.com/discovery/item/*
-// @match        https://www.xiaohongshu.com/search_result/*
-// @match        https://www.xiaohongshu.com/user/profile/*
-// @match        https://www.xiaohongshu.com/board/*
-// @match        https://m.xiaohongshu.com/*
-// @include      *://*.xiaohongshu.com/*
 // @grant        GM_setClipboard
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -33,9 +25,8 @@
   const host = location.hostname;
   const isBili = host.includes('bilibili.com');
   const isYT = host.includes('youtube.com');
-  const isXHS = host.includes('xiaohongshu.com');
 
-  // 保存原始剪贴板方法（小红书 hook 会替换 navigator.clipboard.writeText）
+  // 保存原始剪贴板方法（作为复制失败时的兜底）
   const _originalWriteText =
     typeof navigator !== 'undefined' && navigator.clipboard
       ? navigator.clipboard.writeText.bind(navigator.clipboard)
@@ -45,7 +36,6 @@
   const CONFIG_KEY = 'share_cleaner_config_v2';
   const DEFAULT_CONFIG = {
     ytMode: 'B', // A: 直接复制  B: 劫持面板复制按钮
-    xhsEnabled: true,
     biliBvBtn: true
   };
 
@@ -79,12 +69,6 @@
       if (m) return `https://www.youtube.com/watch?v=${m[1]}`;
       return location.href;
     }
-    if (isXHS) {
-      // 小红书：保留 item 路径，去除无关参数
-      const m = u.pathname.match(/\/(?:discovery\/item|explore)\/([\w]+)/);
-      if (m) return `https://www.xiaohongshu.com/discovery/item/${m[1]}`;
-      return `https://www.xiaohongshu.com${u.pathname}`;
-    }
     return location.href;
   }
 
@@ -105,16 +89,6 @@
       const el = document.querySelector('h1.ytd-watch-metadata yt-formatted-string, h1.title yt-formatted-string');
       if (el && el.textContent.trim()) return el.textContent.trim();
       return (document.title || '').replace(/\s*-\s*YouTube\s*$/i, '').trim();
-    }
-    if (isXHS) {
-      const el = document.querySelector('#detail-title, .note-title, [class*="note-title"]');
-      if (el && el.textContent.trim()) return el.textContent.trim();
-      // document.title 格式：【标题 | 小红书 - 你的生活兴趣社区】
-      let t = document.title || '';
-      const m = t.match(/【(.+?)\s*\|\s*小红书/);
-      if (m) return m[1].trim();
-      t = t.replace(/^【/, '').replace(/\s*\|\s*小红书.*$/i, '').replace(/】$/, '').trim();
-      return t;
     }
     return document.title || '';
   }
@@ -228,7 +202,6 @@
     });
     const navData = [
       { key: 'youtube', label: 'YouTube' },
-      { key: 'xhs', label: '小红书' },
       { key: 'bilibili', label: 'Bilibili' }
     ];
     const navItems = navData.map((n) => {
@@ -273,26 +246,6 @@
     ytTab.appendChild(ytHint);
     content.appendChild(ytTab);
 
-    // 小红书子项
-    const xhsTab = el('div');
-    xhsTab.dataset.tab = 'xhs';
-    xhsTab.style.display = 'none';
-    xhsTab.appendChild(el('div', { fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: '#1a1a1a' }, '小红书分享净化'));
-    const xhsLabel = el('label', { display: 'flex', alignItems: 'center', padding: '10px 0', cursor: 'pointer', fontSize: '14px', color: '#444' });
-    const xhsCheckbox = el('input', { marginRight: '10px', accentColor: '#2563eb' });
-    xhsCheckbox.type = 'checkbox';
-    xhsCheckbox.id = 'sc-xhs-enabled';
-    xhsCheckbox.checked = cfg.xhsEnabled;
-    xhsLabel.appendChild(xhsCheckbox);
-    xhsLabel.appendChild(document.createTextNode(' 启用净化'));
-    xhsTab.appendChild(xhsLabel);
-    const xhsHint = el('div', {
-      marginTop: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px',
-      fontSize: '12px', color: '#888', lineHeight: '1.6'
-    }, '自动净化小红书分享文本：去除口令码、数字前缀和多余格式，只保留"标题 链接"。');
-    xhsTab.appendChild(xhsHint);
-    content.appendChild(xhsTab);
-
     // Bilibili 子项
     const biliTab = el('div');
     biliTab.dataset.tab = 'bilibili';
@@ -320,7 +273,7 @@
     settingsPanel = overlay;
 
     // 导航切换
-    const tabs = [ytTab, xhsTab, biliTab];
+    const tabs = [ytTab, biliTab];
     function switchTab(name) {
       navItems.forEach((n) => {
         const active = n.dataset.tab === name;
@@ -344,12 +297,6 @@
         saveConfig(c);
         showToast('已保存');
       });
-    });
-    xhsCheckbox.addEventListener('change', () => {
-      const c = getConfig();
-      c.xhsEnabled = xhsCheckbox.checked;
-      saveConfig(c);
-      showToast('已保存');
     });
     biliCheckbox.addEventListener('change', () => {
       const c = getConfig();
@@ -426,59 +373,6 @@
     const txt = (btn.textContent || '').trim();
     if (!/^(copy|复制)$/i.test(label) && !/^(copy|复制)$/i.test(txt)) return false;
     return !!btn.closest('yt-copy-link-renderer, yt-sharing-renderer, yt-third-party-network-section-renderer, tp-yt-paper-dialog, [role="dialog"]');
-  }
-
-  // ========== 小红书：净化分享文本 + Hook 剪贴板 ==========
-
-  // 从小红书原始分享文本中提取标题和链接，重组为净化格式
-  // 原始格式：23 【标题 | 小红书 - 你的生活兴趣社区】 😆 口令码 😆 https://...
-  // 净化后：标题 https://...（链接原样保留，不净化）
-  function cleanXhsShareText(text) {
-    if (!text || typeof text !== 'string') return null;
-    if (!/xiaohongshu\.com/.test(text)) return null;
-
-    // 提取链接（含查询参数，不净化）
-    const urlMatch = text.match(/https?:\/\/www\.xiaohongshu\.com\/\S+/);
-    if (!urlMatch) return null;
-    const url = urlMatch[0];
-
-    // 提取标题
-    let title = '';
-    // 格式1：【标题 | 小红书 - 你的生活兴趣社区】
-    const bracketMatch = text.match(/【(.+?)\s*\|\s*小红书/);
-    if (bracketMatch) {
-      title = bracketMatch[1].trim();
-    } else {
-      // 格式2：纯标题文本（无【】）
-      const beforeUrl = text.split(/https?:\/\//)[0];
-      title = beforeUrl.replace(/^\d+\s*/, '').replace(/【/, '').replace(/】/g, '').trim();
-    }
-
-    if (!title) title = getTitle();
-    if (!title) return null;
-    return `${title} ${url}`;
-  }
-
-  function setupXhsHook() {
-    if (!isXHS) return;
-    // 始终安装 hook，在 hook 内部实时读取配置，这样设置面板切换后立即生效
-    if (_originalWriteText && navigator.clipboard) {
-      navigator.clipboard.writeText = async function (text) {
-        const cfg = getConfig();
-        if (!cfg.xhsEnabled) return _originalWriteText(text);
-        const cleaned = cleanXhsShareText(text);
-        if (cleaned && cleaned !== text) {
-          try {
-            await _originalWriteText(cleaned);
-            showToast('复制成功');
-            return;
-          } catch (e) {
-            console.error('[分享净化] 小红书复制失败:', e);
-          }
-        }
-        return _originalWriteText(text);
-      };
-    }
   }
 
   // ========== Bilibili: BV 号复制按钮注入 ==========
@@ -635,6 +529,5 @@
   // 启动
   registerMenu();
   setup();
-  setupXhsHook();
   setupBiliBvButton();
 })();
