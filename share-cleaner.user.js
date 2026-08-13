@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CleanShare - 分享链接净化 (Bilibili & YouTube & 小红书)
 // @namespace    https://github.com/JayeGT002/CleanShare
-// @version      2.0.0
+// @version      2.1.0
 // @description  替换Bilibili/YouTube/小红书的分享行为：复制"标题 净化后链接"，去除跟踪参数与口令码。支持油猴菜单打开设置面板。
 // @author       JayeGT002
 // @license      MIT
@@ -457,6 +457,120 @@
     }
   }
 
+  // ========== Bilibili: BV 号复制按钮注入 ==========
+
+  // 提取当前页面的 BV 号 / av 号
+  function getBvId() {
+    const m = location.pathname.match(/\/video\/(BV[\w]+|av\d+)/i);
+    return m ? m[1] : '';
+  }
+
+  // 创建 BV 号复制按钮（模仿 B 站原生工具栏项样式）
+  function createBvButton() {
+    const wrap = document.createElement('div');
+    wrap.className = 'toolbar-left-item-wrap sc-bv-btn';
+    Object.assign(wrap.style, { cursor: 'pointer', userSelect: 'none' });
+
+    const inner = document.createElement('div');
+    inner.className = 'video-toolbar-left-item';
+    wrap.appendChild(inner);
+
+    const item = document.createElement('div');
+    Object.assign(item.style, {
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      width: '100%', height: '100%', color: '#505050', fontSize: '13px',
+      gap: '4px'
+    });
+    inner.appendChild(item);
+
+    // 复制图标（SVG，模仿 B 站线性图标风格）
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    const rect1 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect1.setAttribute('x', '9');
+    rect1.setAttribute('y', '9');
+    rect1.setAttribute('width', '11');
+    rect1.setAttribute('height', '11');
+    rect1.setAttribute('rx', '2');
+    svg.appendChild(rect1);
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1');
+    svg.appendChild(path);
+    item.appendChild(svg);
+
+    const label = document.createElement('span');
+    label.textContent = 'BV号';
+    item.appendChild(label);
+
+    // 点击复制 BV 号
+    wrap.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (!shouldHandle()) return;
+      const bv = getBvId();
+      if (!bv) {
+        showToast('未识别到 BV 号');
+        return;
+      }
+      try {
+        await copyToClipboard(bv);
+        showToast('已复制 BV 号');
+      } catch (err) {
+        console.error('[CleanShare] BV 复制失败:', err);
+        showToast('复制失败');
+      }
+    });
+
+    return wrap;
+  }
+
+  // 注入按钮到 B 站工具栏（SPA 友好，防重复注入）
+  function injectBvButton() {
+    if (!isBili) return;
+    if (document.querySelector('.sc-bv-btn')) return; // 已注入
+    const toolbar = document.querySelector(
+      '#arc_toolbar_report .toolbar-left, .video-toolbar-container .toolbar-left, #arc_toolbar_report .video-toolbar-left-main, .video-toolbar-left-main'
+    );
+    if (!toolbar) return;
+    // 找到分享按钮，插到它后面；找不到则追加到末尾
+    const shareBtn = Array.from(toolbar.children).find((c) => {
+      const t = (c.textContent || '').trim();
+      return /分享/.test(t) && t.length <= 6;
+    });
+    const btn = createBvButton();
+    if (shareBtn && shareBtn.nextSibling) {
+      toolbar.insertBefore(btn, shareBtn.nextSibling);
+    } else if (shareBtn) {
+      toolbar.appendChild(btn);
+    } else {
+      toolbar.appendChild(btn);
+    }
+  }
+
+  // 用 MutationObserver 监听工具栏出现（B 站 SPA 动态加载）
+  function setupBiliBvButton() {
+    if (!isBili) return;
+    injectBvButton(); // 立即尝试一次
+    const observer = new MutationObserver(() => injectBvButton());
+    observer.observe(document.body, { childList: true, subtree: true });
+    // URL 变化时重新注入（SPA 切换视频）
+    let lastUrl = location.href;
+    setInterval(() => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        setTimeout(injectBvButton, 500);
+      }
+    }, 1000);
+  }
+
   // ========== 事件处理 ==========
 
   let lastShareTs = 0;
@@ -514,4 +628,5 @@
   registerMenu();
   setup();
   setupXhsHook();
+  setupBiliBvButton();
 })();

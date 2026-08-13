@@ -4,7 +4,9 @@
 
 ## 功能
 
-- **Bilibili**：拦截分享按钮，复制 `标题 https://www.bilibili.com/video/BVxxxx/`，去除 `?share_source=`、`?spm_id=`、`?t=` 等参数。
+- **Bilibili**：
+  - 拦截分享按钮，复制 `标题 https://www.bilibili.com/video/BVxxxx/`，去除 `?share_source=`、`?spm_id=`、`?t=` 等参数
+  - 工具栏新增「BV号」按钮，一键复制纯 BV 号（如 `BV1qC4y1E7bH`）
 - **YouTube**：两种模式可选
   - 方案A：点击分享按钮直接复制，原生面板不弹出
   - 方案B（默认）：保留原生分享面板，点击面板内"复制"时替换为净化链接，去除 `&si=`、`&feature=` 等参数
